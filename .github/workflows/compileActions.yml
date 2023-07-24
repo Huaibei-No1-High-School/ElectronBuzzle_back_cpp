@@ -12,9 +12,9 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-22.04
+          - debian
         compiler:
-          - llvm
+          - llvm-15.0.7
     steps:
       - name: checkout source
         uses: actions/checkout@v3
