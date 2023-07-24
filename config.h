@@ -5,7 +5,7 @@
 #ifndef ELECTRONBUZZER_CONFIG_CC
 #define ELECTRONBUZZER_CONFIG_CC
 
-#define VERSION "0.0.1 alpha"
+#define VERSION "0.0.2 alpha"
 
 
 #define SAVE_LOGS_TO_FILE TRUE
