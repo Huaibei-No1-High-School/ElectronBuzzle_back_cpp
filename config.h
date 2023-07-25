@@ -5,7 +5,7 @@
 #ifndef ELECTRONBUZZER_CONFIG_CC
 #define ELECTRONBUZZER_CONFIG_CC
 
-#define VERSION "0.1.0 alpha"
+#define VERSION "0.1.1 alpha"
 
 
 #endif //ELECTRONBUZZER_CONFIG_CC
