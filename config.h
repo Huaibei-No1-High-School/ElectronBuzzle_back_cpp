@@ -8,13 +8,4 @@
 #define VERSION "0.1.0 alpha"
 
 
-#define SAVE_LOGS_TO_FILE TRUE
-#define PORT 8765
-#define HOST "0.0.0.0"
-
-
-#define RATE 44100
-#define CHANNELS 1
-#define BIT_PER_DEPTH 16
-
 #endif //ELECTRONBUZZER_CONFIG_CC

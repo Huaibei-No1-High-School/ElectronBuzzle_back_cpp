@@ -35,10 +35,13 @@ public:
 
     int broadcast(const void* data, int size, const WebSocketChannelPtr& ws) {
         return foreachChannel([data, size, ws](const WebSocketChannelPtr & channel) {
-            if (ws->id() == channel->id())
-                LOG(INFO) << "[SEND] Pass Connection " << channel->id();
+            if (size == 1) {
+                LOG(INFO) << "[SEND] Pass " << channel->id() <<  "'s HeartBeat";
+            }
+            else if (ws->id() == channel->id())
+            LOG(INFO) << "[SEND] Pass s Connection " << channel->id();
             else {
-                channel->send((const char *) data, size);
+                channel->send((const char *) data, size, WS_OPCODE_BINARY);
                 LOG(INFO)
                         << "[CONTENT] content "
                         << size

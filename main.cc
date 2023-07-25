@@ -1,34 +1,78 @@
-#include <iostream>
 #include <glog/logging.h>
+#include <hv/hlog.h>
 #include <hv/WebSocketServer.h>
+#include <yaml-cpp/yaml.h>
 #include <unordered_map>
+#include <fstream>
 
 #include "config.h"
 #include "Connection.hpp"
 
+YAML::Node config;
+
+void configuration();
 void initWebSocketServer();
-void initLogModule(bool);
+void initLogModule(bool, char**);
 
 
 int main(int argc, char** argv) {
-    initLogModule(SAVE_LOGS_TO_FILE);
-
-    google::InitGoogleLogging(argv[0]);
+    configuration();
+    initLogModule(config["log"].as<bool>(), argv);
 
     LOG(INFO) << "Electron Buzzer Server, Developed by Haruki.";
     LOG(INFO) << "Current version: " << VERSION << ".";
-    LOG(INFO) << "Listening: " << HOST << ":" << PORT << " ...";
+    LOG(INFO) << "Listening: " << config["host"].as<std::string>()
+              << ":" << config["port"].as<std::string>() << " ...";
 
     initWebSocketServer();
 
+    google::ShutdownGoogleLogging();
     return 0;
 }
 
-void initLogModule(bool flag) {
+void configuration() {
+    assert(config.IsNull());
+    namespace fs = std::filesystem;
+    fs::path configPath = "./config.yaml";
+    if (fs::exists(configPath)) {
+        std::ifstream file(configPath);
+        config = YAML::Load(file);
+        std::cout << "File config.yaml is found, loading..." << '\n';
+    } else {
+        std::cerr << "File config.yaml is not found."
+            << "\n" << "Using default settings..." << '\n';
+        YAML::Node tmpNode;
+        assert(tmpNode.IsNull());
+        tmpNode["host"] = "0.0.0.0";
+        tmpNode["port"] = 8765;
+        tmpNode["log"] = "true";
+
+        std::ofstream file;
+        file.open(configPath, std::ios_base::out);
+        if (!file.is_open()) {
+            std::cerr << "Failed to open " << configPath << '\n';
+            exit(-1);
+        } else {
+            file << tmpNode << std::endl;
+        }
+        config = tmpNode;
+    }
+}
+
+void initLogModule(bool flag, char** argv) {
+    namespace fs = std::filesystem;
+    const fs::path& logs_dir = "./logs";
+
+    if (!fs::exists(logs_dir))
+        fs::create_directory(logs_dir);
+
+    google::InitGoogleLogging(argv[0]);
+    FLAGS_log_dir = logs_dir.string().c_str();
+    logger_set_level(hlog, LOG_LEVEL_SILENT);
     FLAGS_colorlogtostdout = flag;
-    FLAGS_logtostdout = flag;
-//    FLAGS_log_dir = "../logs";        // debug
-    FLAGS_log_dir = "./logs";           // release
+//    FLAGS_logtostdout = !flag;
+    FLAGS_alsologtostderr = flag;
+    FLAGS_max_log_size = 10;            // 10MB
 
 }
 
@@ -37,7 +81,7 @@ void initWebSocketServer() {
     WebSocketService webSocketService;
     std::unordered_map<WebSocketChannelPtr, uint32_t> connectedClients;
     MyConnection connections;
-
+    webSocketService.ping_interval = 0;
     webSocketService.onopen = [&connections](const WebSocketChannelPtr& channel, const HttpRequestPtr& req) {
         LOG(INFO)
                 << "[REQ] From: "
@@ -45,10 +89,6 @@ void initWebSocketServer() {
                 << " | Path: "
                 << req->Path();
         try {
-//            char tmpStr[36];
-//            uuid_t uuid;
-//            uuid_generate(uuid);
-//            uuid_unparse(uuid, tmpStr);
             connections.addChannel(channel);
             LOG(INFO) << "[REQ] Connection "<< channel->id() << " generated.";
         } catch (const std::string error) {
@@ -57,9 +97,6 @@ void initWebSocketServer() {
     };
 
     webSocketService.onmessage = [&connections](const WebSocketChannelPtr& channel, const std::string& content) {
-//        LOG(INFO)
-//                << "[CONTENT] new content, length is: "
-//                << content.length();
         connections.broadcast(content.data(), content.size(), channel);
 
     };
@@ -71,8 +108,8 @@ void initWebSocketServer() {
 
     WebSocketServer server;
     server.registerWebSocketService(&webSocketService);
-    server.setHost(HOST);
-    server.setPort(PORT);
+    server.setHost(config["host"].as<std::string>().c_str());
+    server.setPort(config["port"].as<int>());
     server.setThreadNum(4);
     LOG(INFO) << "WebSocket server is starting...";
     server.run();
